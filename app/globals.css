@@ -24,3 +24,34 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.pop-up-min {
+  position: relative;
+  top: 0;
+  transition: top ease 0.7s;
+}
+
+.pop-up-min:hover {
+  top: -3px;
+}
+
+.pop-up-med {
+  position: relative;
+  top: 0;
+  transition: top ease 0.7s;
+}
+
+.pop-up-med:hover {
+  top: -6px;
+}
+
+.pop-up-max {
+  position: relative;
+  top: 0;
+  transition: top ease 0.7s;
+}
+
+.pop-up-max:hover {
+  top: -9px;
+}
+
