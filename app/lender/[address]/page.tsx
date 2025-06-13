@@ -11,6 +11,7 @@ import { CONTRACT_ADDRESSES } from "@/lib/constants";
 import { getTokenInfo } from "@/lib/tokenLogos";
 import { useLenderTokenBalances } from "@/lib/hooks/useLoanManager";
 import QuoteModal from "../../components/QuoteModal";
+import { formatUsdAmount } from "@/lib/utils/format";
 
 export default function LenderDetailsPage() {
   const params = useParams();
@@ -36,16 +37,6 @@ export default function LenderDetailsPage() {
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
-
-  const formatUsdAmount = (amount: number) => {
-    if (amount >= 1000000) {
-      return `$${(amount / 1000000).toFixed(1)}M`;
-    } else if (amount >= 1000) {
-      return `$${(amount / 1000).toFixed(1)}K`;
-    } else {
-      return `$${amount.toFixed(2)}`;
-    }
   };
 
   const handleTokenAmountChange = (tokenAddress: string, amount: string) => {

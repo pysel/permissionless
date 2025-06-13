@@ -7,6 +7,7 @@ import { ConnectWalletPrompt } from "../components/ConnectWalletPrompt";
 import { useBorrowerLoans } from "@/lib/hooks/useLoanManager";
 import { getTokenInfo } from "@/lib/tokenLogos";
 import { calculateLoanStatus } from "./loan/[address]/page";
+import { formatUsdAmount } from "@/lib/utils/format";
 
 export default function ManagePage() {
   const { address, isConnected } = useAccount();
@@ -99,16 +100,6 @@ function LoanCard({ loan }: { loan: any }) {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const formatUsdAmount = (amount: number) => {
-    if (amount >= 1000000) {
-      return `$${(amount / 1000000).toFixed(1)}M`;
-    } else if (amount >= 1000) {
-      return `$${(amount / 1000).toFixed(1)}K`;
-    } else {
-      return `$${amount.toFixed(2)}`;
-    }
-  };
-
   const loanStatus = calculateLoanStatus(loan);
   const width = loanStatus.percentage > 100 ? 100 : loanStatus.percentage < 0 ? 0 : loanStatus.percentage;
   const collateralValueNow = Number(loan.collateralCurrentValue);
@@ -140,13 +131,13 @@ function LoanCard({ loan }: { loan: any }) {
         <div className="bg-gray-50 rounded-lg p-3">
           <p className="text-sm text-gray-500 mb-1">Principal Value</p>
           <p className="text-lg font-semibold">
-            {formatUsdAmount(Number(loan.initialLoanValue) / 1e8)}
+            {formatUsdAmount(Number(loan.initialLoanValue))}
           </p>
         </div>
         <div className="bg-gray-50 rounded-lg p-3">
           <p className="text-sm text-gray-500 mb-1">Present Value</p>
           <p className="text-lg font-semibold">
-            {formatUsdAmount(Number(loan.currentLoanValue) / 1e8)}
+            {formatUsdAmount(Number(loan.currentLoanValue))}
           </p>
         </div>
         <div className="bg-gray-50 rounded-lg p-3">

@@ -7,16 +7,17 @@ import WalletConnect from "../../../components/WalletConnect";
 import { ConnectWalletPrompt } from "../../../components/ConnectWalletPrompt";
 import { useBorrowerLoans } from "@/lib/hooks/useLoanManager";
 import { getTokenInfo } from "@/lib/tokenLogos";
+import { formatUsdAmount } from "@/lib/utils/format";
 
 export const calculateLoanStatus = (loan: any) => {
     if (!loan) return { status: 'unknown', color: 'bg-gray-100 text-gray-800', percentage: 0 };
     
-    const initialLoanValue = Number(loan.initialLoanValue) / 1e8;
-    const currentLoanValue = Number(loan.currentLoanValue) / 1e8;
-    const collateralValue = Number(loan.collateralValue) / 1e8;
+    const initialLoanValue = Number(loan.initialLoanValue);
+    const currentLoanValue = Number(loan.currentLoanValue);
+    const collateralCurrentValue = Number(loan.collateralCurrentValue);
     
-    const diff = currentLoanValue + collateralValue - initialLoanValue;
-    const fraction = diff / collateralValue;
+    const diff = currentLoanValue + collateralCurrentValue - initialLoanValue;
+    const fraction = diff / collateralCurrentValue;
     
     if (fraction > 0.7) {
       return { status: 'good', color: 'bg-green-100 text-green-800', percentage: Math.round(fraction * 100) };
@@ -37,16 +38,6 @@ export default function LoanDetailsPage() {
 
   const formatAddress = (address: string) => {
     return address;
-  };
-
-  const formatUsdAmount = (amount: number) => {
-    if (amount >= 1000000) {
-      return `$${(amount / 1000000).toFixed(2)}M`;
-    } else if (amount >= 1000) {
-      return `$${(amount / 1000).toFixed(2)}K`;
-    } else {
-      return `$${amount.toFixed(2)}`;
-    }
   };
 
   if (!isConnected) {
@@ -137,15 +128,15 @@ export default function LoanDetailsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div>
                 <p className="text-xl text-gray-500 mb-1">Principal Value</p>
-                <p className="text-2xl font-bold text-black">{formatUsdAmount(Number(loan.initialLoanValue) / 1e8)}</p>
+                <p className="text-2xl font-bold text-black">{formatUsdAmount(Number(loan.initialLoanValue))}</p>
               </div>
               <div>
                 <p className="text-xl text-gray-500 mb-1">Present Value</p>
-                <p className="text-2xl font-bold text-black">{formatUsdAmount(Number(loan.currentLoanValue) / 1e8)}</p>
+                <p className="text-2xl font-bold text-black">{formatUsdAmount(Number(loan.currentLoanValue))}</p>
               </div>
               <div>
-                <p className="text-xl text-gray-500 mb-1">Collateral</p>
-                <p className="text-2xl font-bold text-black">{formatUsdAmount(Number(loan.collateralValue) / 1e8)}</p>
+                <p className="text-xl text-gray-500 mb-1">Collateral Value</p>
+                <p className="text-2xl font-bold text-black">{formatUsdAmount(Number(loan.collateralCurrentValue))}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 mb-1">Status</p>

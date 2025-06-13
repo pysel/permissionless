@@ -2,6 +2,7 @@
 
 import { useReadContract, useReadContracts } from "wagmi";
 import { CONTRACT_ADDRESSES } from "@/lib/constants";
+import { TOKEN_ADDRESSES } from "../tokenLogos";
 
 // Registry ABI to get loan manager address
 const REGISTRY_ABI = [
@@ -65,8 +66,8 @@ const LOAN_MANAGER_ABI = [
           { name: "borrower", type: "address" },
           { name: "loaner", type: "address" },
           { name: "collateralValue", type: "uint256" },
-          { name: "initialLoanValue", type: "uint256" },
           { name: "collateralEthAmount", type: "uint256" },
+          { name: "initialLoanValue", type: "uint256" },
           { name: "tokens", type: "address[]" },
           { name: "amounts", type: "uint256[]" },
           { name: "isActive", type: "bool" },
@@ -213,7 +214,7 @@ export function useLenderAvailableFunds(lenderAddress: string, allowedTokens: st
       
       if (balance && pricePerToken && pricePerToken > 0) {
         // Calculate USD value: (balance * pricePerToken) / 10^18 / 10^8
-        const usdValue = Number((balance * pricePerToken) / BigInt(10**18) / BigInt(10**8));
+        const usdValue = Number((balance * pricePerToken) / BigInt(10**18));
         return total + usdValue;
       }
       return total;
@@ -270,7 +271,7 @@ export function useLenderTokenBalances(lenderAddress: string, allowedTokens: str
       
       if (balance && pricePerToken && pricePerToken > 0) {
         // Calculate USD value: (balance * pricePerToken) / 10^18 / 10^8
-        const usdValue = Number((balance * pricePerToken) / BigInt(10**18) / BigInt(10**8));
+        const usdValue = Number((balance * pricePerToken) / BigInt(10**18));
         const tokenBalance = Number(balance) / (10**18); // Convert to readable token amount
         
         tokenBalances[tokenAddress] = {
@@ -335,289 +336,103 @@ export function useBorrowerLoans(borrowerAddress: string) {
     },
   });
 
-  // Always call hooks for up to 10 loans (reasonable maximum) to maintain consistent hook calls
   const loanAddressList = (loanAddresses as string[]) || [];
   
-  const loan1Data = useReadContract({
+  // Create contracts for getting loan data
+  const loanDataContracts = loanAddressList.map(loanAddress => ({
     address: loanManagerAddress as `0x${string}`,
     abi: LOAN_MANAGER_ABI,
     functionName: "loanToData",
-    args: [loanAddressList[0] as `0x${string}` || "0x0000000000000000000000000000000000000000"],
+    args: [loanAddress as `0x${string}`],
+  }));
+
+  // Get all loan data in one batch
+  const { data: loanDataResults } = useReadContracts({
+    contracts: loanDataContracts as any,
     query: {
       enabled: !!loanManagerAddress && loanAddressList.length > 0,
     },
   });
 
-  const loan2Data = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "loanToData",
-    args: [loanAddressList[1] as `0x${string}` || "0x0000000000000000000000000000000000000000"],
+  console.log("data results", loanDataResults);
+
+  // Create contracts for getting current values
+  const currentValueContracts = loanDataResults?.map((result, index) => {
+    const loanData = result.result as any;
+    return {
+      address: loanManagerAddress as `0x${string}`,
+      abi: LOAN_MANAGER_ABI,
+      functionName: "getWalletValueUSD",
+      args: [
+        loanData?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
+        loanData?.tokens as `0x${string}`[] || []
+      ],
+    };
+  }) || [];
+
+  // Get all current values in one batch
+  const { data: currentValueResults } = useReadContracts({
+    contracts: currentValueContracts as any,
     query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 1,
+      enabled: !!loanManagerAddress && currentValueContracts.length > 0,
     },
   });
 
-  const loan3Data = useReadContract({
+  const { data: ethPrice } = useReadContract({
     address: loanManagerAddress as `0x${string}`,
     abi: LOAN_MANAGER_ABI,
-    functionName: "loanToData",
-    args: [loanAddressList[2] as `0x${string}` || "0x0000000000000000000000000000000000000000"],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 2,
-    },
-  });
-
-  const loan4Data = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "loanToData",
-    args: [loanAddressList[3] as `0x${string}` || "0x0000000000000000000000000000000000000000"],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 3,
-    },
-  });
-
-  const loan5Data = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "loanToData",
-    args: [loanAddressList[4] as `0x${string}` || "0x0000000000000000000000000000000000000000"],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 4,
-    },
-  });
-
-  const loan6Data = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "loanToData",
-    args: [loanAddressList[5] as `0x${string}` || "0x0000000000000000000000000000000000000000"],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 5,
-    },
-  });
-
-  const loan7Data = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "loanToData",
-    args: [loanAddressList[6] as `0x${string}` || "0x0000000000000000000000000000000000000000"],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 6,
-    },
-  });
-
-  const loan8Data = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "loanToData",
-    args: [loanAddressList[7] as `0x${string}` || "0x0000000000000000000000000000000000000000"],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 7,
-    },
-  });
-
-  const loan9Data = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "loanToData",
-    args: [loanAddressList[8] as `0x${string}` || "0x0000000000000000000000000000000000000000"],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 8,
-    },
-  });
-
-  const loan10Data = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "loanToData",
-    args: [loanAddressList[9] as `0x${string}` || "0x0000000000000000000000000000000000000000"],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 9,
-    },
-  });
-
-  // Current loan value hooks - always call 10 hooks for consistency
-  const loan1CurrentValue = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "getWalletValueUSD",
-    args: [
-      (loan1Data.data as any)?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-      (loan1Data.data as any)?.tokens as `0x${string}`[] || []
-    ],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 0 && !!loan1Data.data,
-    },
-  });
-
-  const loan2CurrentValue = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "getWalletValueUSD",
-    args: [
-      (loan2Data.data as any)?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-      (loan2Data.data as any)?.tokens as `0x${string}`[] || []
-    ],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 1 && !!loan2Data.data,
-    },
-  });
-
-  const loan3CurrentValue = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "getWalletValueUSD",
-    args: [
-      (loan3Data.data as any)?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-      (loan3Data.data as any)?.tokens as `0x${string}`[] || []
-    ],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 2 && !!loan3Data.data,
-    },
-  });
-
-  const loan4CurrentValue = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "getWalletValueUSD",
-    args: [
-      (loan4Data.data as any)?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-      (loan4Data.data as any)?.tokens as `0x${string}`[] || []
-    ],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 3 && !!loan4Data.data,
-    },
-  });
-
-  const loan5CurrentValue = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "getWalletValueUSD",
-    args: [
-      (loan5Data.data as any)?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-      (loan5Data.data as any)?.tokens as `0x${string}`[] || []
-    ],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 4 && !!loan5Data.data,
-    },
-  });
-
-  const loan6CurrentValue = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "getWalletValueUSD",
-    args: [
-      (loan6Data.data as any)?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-      (loan6Data.data as any)?.tokens as `0x${string}`[] || []
-    ],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 5 && !!loan6Data.data,
-    },
-  });
-
-  const loan7CurrentValue = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "getWalletValueUSD",
-    args: [
-      (loan7Data.data as any)?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-      (loan7Data.data as any)?.tokens as `0x${string}`[] || []
-    ],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 6 && !!loan7Data.data,
-    },
-  });
-
-  const loan8CurrentValue = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "getWalletValueUSD",
-    args: [
-      (loan8Data.data as any)?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-      (loan8Data.data as any)?.tokens as `0x${string}`[] || []
-    ],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 7 && !!loan8Data.data,
-    },
-  });
-
-  const loan9CurrentValue = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "getWalletValueUSD",
-    args: [
-      (loan9Data.data as any)?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-      (loan9Data.data as any)?.tokens as `0x${string}`[] || []
-    ],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 8 && !!loan9Data.data,
-    },
-  });
-
-  const loan10CurrentValue = useReadContract({
-    address: loanManagerAddress as `0x${string}`,
-    abi: LOAN_MANAGER_ABI,
-    functionName: "getWalletValueUSD",
-    args: [
-      (loan10Data.data as any)?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-      (loan10Data.data as any)?.tokens as `0x${string}`[] || []
-    ],
-    query: {
-      enabled: !!loanManagerAddress && loanAddressList.length > 9 && !!loan10Data.data,
-    },
+    functionName: "getTokenValueUSD",
+    args: [TOKEN_ADDRESSES.WETH as `0x${string}`, BigInt(10**18)],
   });
 
   // Process loan data
   const loans: LoanData[] = [];
-  const loanDataHooks = [loan1Data, loan2Data, loan3Data, loan4Data, loan5Data, loan6Data, loan7Data, loan8Data, loan9Data, loan10Data];
-  const currentValueHooks = [loan1CurrentValue, loan2CurrentValue, loan3CurrentValue, loan4CurrentValue, loan5CurrentValue, loan6CurrentValue, loan7CurrentValue, loan8CurrentValue, loan9CurrentValue, loan10CurrentValue];
   
-  for (let i = 0; i < loanAddressList.length && i < 10; i++) {
-    const loanHook = loanDataHooks[i];
-    const currentValueHook = currentValueHooks[i];
-    
-    if (loanHook.data) {
-      const loanData = loanHook.data as any;
-      const currentValue: bigint = currentValueHook.data as bigint;
+  if (loanDataResults && currentValueResults && ethPrice) {
+    loanDataResults.forEach((result, index) => {
+      const loanData = result.result as any;
+      const currentValue = currentValueResults[index]?.result as bigint;
       
-      // Calculate collateral current value based on the collateralEthAmount
-      // This assumes the current value is proportional to the initial value
-      const collateralCurrentValue = loanData.collateralEthAmount ? 
-        (loanData.collateralEthAmount * BigInt(currentValue)) / loanData.initialLoanValue : 
-        BigInt(0);
-    
-        console.log(loanData.collateralEthAmount, loanData.initialLoanValue, currentValue);
-      
-      loans.push({
-        loanAddress: loanAddressList[i],
-        borrower: loanData.borrower,
-        loaner: loanData.loaner,
-        collateralValue: loanData.collateralValue,
-        collateralEthAmount: loanData.collateralEthAmount,
-        collateralCurrentValue,
-        initialLoanValue: loanData.initialLoanValue,
-        currentLoanValue: currentValue || BigInt(0),
-        tokens: loanData.tokens,
-        amounts: loanData.amounts,
-        isActive: loanData.isActive,
-        wallet: loanData.wallet,
-      });
-    }
+      if (loanData) {
+        // Calculate collateral current value based on the collateralEthAmount
+        // All values are already in 8 decimals, no need for additional scaling
+        const collateralCurrentValue = loanData.collateralEthAmount ? 
+          (loanData.collateralEthAmount * ethPrice) / BigInt(10**18) : 
+          BigInt(0);
+
+        console.log({
+          collateralEthAmount: loanData.collateralEthAmount.toString(),
+          initialLoanValue: loanData.initialLoanValue.toString(),
+          currentValue: currentValue.toString(),
+          calculatedValue: collateralCurrentValue.toString(),
+          // Add human readable values for debugging
+          collateralEthAmountReadable: Number(loanData.collateralEthAmount) / 1e8,
+          initialLoanValueReadable: Number(loanData.initialLoanValue) / 1e8,
+          currentValueReadable: Number(currentValue) / 1e8,
+          calculatedValueReadable: Number(collateralCurrentValue) / 1e8
+        });
+        
+        loans.push({
+          loanAddress: loanAddressList[index],
+          borrower: loanData.borrower,
+          loaner: loanData.loaner,
+          collateralValue: loanData.collateralValue,
+          collateralEthAmount: loanData.collateralEthAmount,
+          collateralCurrentValue,
+          initialLoanValue: loanData.initialLoanValue,
+          currentLoanValue: currentValue || BigInt(0),
+          tokens: loanData.tokens,
+          amounts: loanData.amounts,
+          isActive: loanData.isActive,
+          wallet: loanData.wallet,
+        });
+      }
+    });
   }
 
-  const isLoading = !loanAddresses || loanDataHooks.some((hook, index) => 
-    index < loanAddressList.length && hook.isLoading
-  ) || currentValueHooks.some((hook, index) => 
-    index < loanAddressList.length && hook.isLoading
-  );
-
-  const error = loanDataHooks.find((hook, index) => 
-    index < loanAddressList.length && hook.error
-  )?.error?.message || currentValueHooks.find((hook, index) => 
-    index < loanAddressList.length && hook.error
-  )?.error?.message;
+  const isLoading = !loanAddresses || !loanDataResults || !currentValueResults;
+  const error = loanDataResults?.find(result => result.error)?.error?.message || 
+                currentValueResults?.find(result => result.error)?.error?.message;
 
   return {
     loans,

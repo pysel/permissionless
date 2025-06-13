@@ -4,6 +4,7 @@ import { LenderData } from "@/lib/hooks/useLenders";
 import { getTokenInfo } from "@/lib/tokenLogos";
 import { useLenderAvailableFunds } from "@/lib/hooks/useLoanManager";
 import Link from "next/link";
+import { formatUsdAmount } from "@/lib/utils/format";
 
 interface LenderCardProps {
   lender: LenderData;
@@ -18,16 +19,6 @@ export default function LenderCard({ lender, rank }: LenderCardProps) {
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
-
-  const formatUsdAmount = (amount: number) => {
-    if (amount >= 1000000) {
-      return `$${(amount / 1000000).toFixed(1)}M`;
-    } else if (amount >= 1000) {
-      return `$${(amount / 1000).toFixed(1)}K`;
-    } else {
-      return `$${amount.toFixed(2)}`;
-    }
   };
 
   return (
