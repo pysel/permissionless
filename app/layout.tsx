@@ -9,8 +9,8 @@ import { config } from "@/lib/config";
 const antic = Antic({ weight: "400", subsets: ["latin"] });
  
 export const metadata: Metadata = {
-  title: "Next.js App",
-  description: "Next.js App",
+  title: "Permissionless.Fi",
+  description: "Permissionless",
 };
  
 export default async function RootLayout({

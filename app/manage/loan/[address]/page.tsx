@@ -104,6 +104,7 @@ export default function LoanDetailsPage() {
   }
 
   const loanStatus = calculateLoanStatus(loan);
+  const width = loanStatus.percentage > 100 ? 100 : loanStatus.percentage < 0 ? 0 : loanStatus.percentage;
 
   return (
     <div className="min-h-screen bg-gray-50 text-black">
@@ -166,7 +167,7 @@ export default function LoanDetailsPage() {
                     loanStatus.status === 'medium' ? 'bg-yellow-500' :
                     'bg-red-500'
                   }`}
-                  style={{ width: `${loanStatus.percentage}%` }}
+                  style={{ width: `${width}%` }}
                 />
               </div>
             </div>

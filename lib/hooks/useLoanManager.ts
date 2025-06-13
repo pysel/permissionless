@@ -66,6 +66,7 @@ const LOAN_MANAGER_ABI = [
           { name: "loaner", type: "address" },
           { name: "collateralValue", type: "uint256" },
           { name: "initialLoanValue", type: "uint256" },
+          { name: "collateralEthAmount", type: "uint256" },
           { name: "tokens", type: "address[]" },
           { name: "amounts", type: "uint256[]" },
           { name: "isActive", type: "bool" },
@@ -112,6 +113,8 @@ export interface LoanData {
   borrower: string;
   loaner: string;
   collateralValue: bigint;
+  collateralEthAmount: bigint;
+  collateralCurrentValue: bigint;
   initialLoanValue: bigint;
   currentLoanValue: bigint;
   tokens: string[];
@@ -577,13 +580,23 @@ export function useBorrowerLoans(borrowerAddress: string) {
     
     if (loanHook.data) {
       const loanData = loanHook.data as any;
-      const currentValue = currentValueHook.data as bigint;
+      const currentValue: bigint = currentValueHook.data as bigint;
+      
+      // Calculate collateral current value based on the collateralEthAmount
+      // This assumes the current value is proportional to the initial value
+      const collateralCurrentValue = loanData.collateralEthAmount ? 
+        (loanData.collateralEthAmount * BigInt(currentValue)) / loanData.initialLoanValue : 
+        BigInt(0);
+    
+        console.log(loanData.collateralEthAmount, loanData.initialLoanValue, currentValue);
       
       loans.push({
         loanAddress: loanAddressList[i],
         borrower: loanData.borrower,
         loaner: loanData.loaner,
         collateralValue: loanData.collateralValue,
+        collateralEthAmount: loanData.collateralEthAmount,
+        collateralCurrentValue,
         initialLoanValue: loanData.initialLoanValue,
         currentLoanValue: currentValue || BigInt(0),
         tokens: loanData.tokens,

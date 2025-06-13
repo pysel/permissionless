@@ -36,22 +36,9 @@ export default function Dashboard() {
                       </svg>
                     </div>
                   </div>
-                  <p className="text-gray-600 transition-colors">Access undercollateralized loans</p>
+                  <p className="text-gray-600 transition-colors">Access undercollateralized loans on-chain</p>
                 </div>
               </Link>
-
-              {/* Placeholder for future features */}
-              <div className="bg-white p-6 rounded-xl border-2 border-black opacity-50">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-semibold text-black">Lend</h3>
-                  <div className="text-black">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0h-2" />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-gray-600">Coming soon...</p>
-              </div>
 
               {/* Manage Card */}
               <Link href="/manage">
@@ -67,6 +54,19 @@ export default function Dashboard() {
                   <p className="text-gray-600 transition-colors">View and manage your active loans</p>
                 </div>
               </Link>
+
+              {/* Placeholder for future features */}
+              <div className="bg-white p-6 rounded-xl border-2 border-black opacity-50">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-semibold text-black">Lend</h3>
+                  <div className="text-black">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0h-2" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-gray-600">Coming soon...</p>
+              </div>
             </div>
           </div>
       </main>

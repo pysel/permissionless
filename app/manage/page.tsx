@@ -110,6 +110,8 @@ function LoanCard({ loan }: { loan: any }) {
   };
 
   const loanStatus = calculateLoanStatus(loan);
+  const width = loanStatus.percentage > 100 ? 100 : loanStatus.percentage < 0 ? 0 : loanStatus.percentage;
+  const collateralValueNow = Number(loan.collateralCurrentValue);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 transition-all duration-300 hover:shadow-xl hover:scale-[1.005] hover:border-blue-300 cursor-pointer">
@@ -150,7 +152,7 @@ function LoanCard({ loan }: { loan: any }) {
         <div className="bg-gray-50 rounded-lg p-3">
           <p className="text-sm text-gray-500 mb-1">Collateral Value</p>
           <p className="text-lg font-semibold">
-            {formatUsdAmount(Number(loan.collateralValue) / 1e8)}
+            {formatUsdAmount(collateralValueNow)}
           </p>
         </div>
       </div>
@@ -158,7 +160,7 @@ function LoanCard({ loan }: { loan: any }) {
       {/* Loan Health Indicator */}
       <div className="mb-4">
         <div className="flex justify-between items-center mb-2">
-          <p className="text-sm text-gray-500">Loan Health</p>
+          <p className="text-sm text-gray-500">Overall Health</p>
           <p className="text-sm font-medium">
             {loanStatus.status === 'good' ? 'Healthy' : 
              loanStatus.status === 'medium' ? 'Moderate Risk' : 
@@ -172,7 +174,7 @@ function LoanCard({ loan }: { loan: any }) {
               loanStatus.status === 'medium' ? 'bg-yellow-500 w-2/3' :
               'bg-red-500 w-1/3'
             }`}
-            style={{ width: `${loanStatus.percentage}%` }}
+            style={{ width: `${width}%` }}
           />
         </div>
       </div>
