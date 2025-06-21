@@ -4,12 +4,13 @@ export interface TokenInfo {
   name: string;
   logoUrl: string;
   color: string;
+  precision: number; // Number of decimal places allowed for input
 }
 
 // Common token addresses (you'll need to update these with actual addresses for your network)
 export const TOKEN_ADDRESSES = {
   ETH: '0x0000000000000000000000000000000000000000'.toLowerCase(),
-  WETH: '0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9'.toLowerCase(),
+  WETH: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14'.toLowerCase(),
   USDC: '0xA0b86a33E6441b8DBC06e6F6BBEe6DBb6Ee4F5D5'.toLowerCase(),
   USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7'.toLowerCase(),
   DAI: '0x6B175474E89094C44Da98b954EedeAC495271d0F'.toLowerCase(),
@@ -23,42 +24,49 @@ export const TOKEN_INFO: Record<string, TokenInfo> = {
     name: 'Ethereum',
     logoUrl: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png',
     color: 'bg-blue-500',
+    precision: 3,
   },
   [TOKEN_ADDRESSES.WETH]: {
     symbol: 'WETH',
     name: 'Wrapped Ethereum',
     logoUrl: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/logo.png',
     color: 'bg-blue-500',
+    precision: 3,
   },
   [TOKEN_ADDRESSES.USDC]: {
     symbol: 'USDC',
     name: 'USD Coin',
     logoUrl: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86a33E6441b8DBC06e6F6BBEe6DBb6Ee4F5D5/logo.png',
     color: 'bg-blue-600',
+    precision: 2,
   },
   [TOKEN_ADDRESSES.USDT]: {
     symbol: 'USDT',
     name: 'Tether USD',
     logoUrl: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdAC17F958D2ee523a2206206994597C13D831ec7/logo.png',
     color: 'bg-green-500',
+    precision: 2,
   },
   [TOKEN_ADDRESSES.DAI]: {
     symbol: 'DAI',
     name: 'Dai Stablecoin',
     logoUrl: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x6B175474E89094C44Da98b954EedeAC495271d0F/logo.png',
     color: 'bg-yellow-500',
+    precision: 2,
   },
   [TOKEN_ADDRESSES.WBTC]: {
     symbol: 'WBTC',
     name: 'Wrapped Bitcoin',
     logoUrl: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599/logo.png',
     color: 'bg-orange-500',
+    precision: 8,
   },
   [TOKEN_ADDRESSES.LINK]: {
     symbol: 'LINK',
     name: 'Chainlink',
     logoUrl: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x514910771AF9Ca656af840dff83E8264EcF986CA/logo.png',
     color: 'bg-blue-400',
+    precision: 3,
   },
 };
 
@@ -69,5 +77,6 @@ export const getTokenInfo = (address: string): TokenInfo => {
     name: 'Unknown Token',
     logoUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiM5Q0EzQUYiLz4KPHRleHQgeD0iMTIiIHk9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIxMiIgZm9udC1mYW1pbHk9IkFyaWFsIj4/PC90ZXh0Pgo8L3N2Zz4K',
     color: 'bg-gray-500',
+    precision: 2,
   };
 }; 

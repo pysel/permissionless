@@ -20,7 +20,7 @@ export default function Dashboard() {
           <div className="space-y-8">
             <div className="text-center">
               <h1 className="text-5xl font-semibold mb-4">Permissionless.Fi</h1>
-              <p className="text-gray-600 mb-8">Manage your DeFi activities</p>
+              <p className="text-gray-600 mb-8">Where unused capital meets ideas</p>
             </div>
 
             {/* Action Cards */}

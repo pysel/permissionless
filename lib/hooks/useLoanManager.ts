@@ -3,110 +3,9 @@
 import { useReadContract, useReadContracts } from "wagmi";
 import { CONTRACT_ADDRESSES } from "@/lib/constants";
 import { TOKEN_ADDRESSES } from "../tokenLogos";
-
-// Registry ABI to get loan manager address
-const REGISTRY_ABI = [
-  {
-    inputs: [],
-    name: "i_loanManager",
-    outputs: [{ name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// Loan Manager ABI for price queries
-const LOAN_MANAGER_ABI = [
-  {
-    inputs: [
-      { name: "token", type: "address" },
-      { name: "amount", type: "uint256" }
-    ],
-    name: "getTokenValueUSD",
-    outputs: [{ name: "usdValue", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        name: "request",
-        type: "tuple",
-        components: [
-          { name: "loaner", type: "address" },
-          { name: "tokens", type: "address[]" },
-          { name: "amounts", type: "uint256[]" },
-          { name: "collateralValue", type: "uint256" }
-        ]
-      }
-    ],
-    name: "createLoan",
-    outputs: [
-      { name: "", type: "address" },
-      { name: "", type: "address" }
-    ],
-    stateMutability: "payable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "_borrower", type: "address" }],
-    name: "getBorrowerLoans",
-    outputs: [{ name: "", type: "address[]" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "_loan", type: "address" }],
-    name: "loanToData",
-    outputs: [
-      {
-        name: "",
-        type: "tuple",
-        components: [
-          { name: "borrower", type: "address" },
-          { name: "loaner", type: "address" },
-          { name: "collateralValue", type: "uint256" },
-          { name: "collateralEthAmount", type: "uint256" },
-          { name: "initialLoanValue", type: "uint256" },
-          { name: "tokens", type: "address[]" },
-          { name: "amounts", type: "uint256[]" },
-          { name: "isActive", type: "bool" },
-          { name: "wallet", type: "address" }
-        ]
-      }
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "wallet", type: "address" },
-      { name: "tokens", type: "address[]" }
-    ],
-    name: "getWalletValueUSD",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "loanerGasFees",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// ERC20 ABI for balance queries
-const ERC20_ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import ERC20_ABI from "../abis/erc20";
+import REGISTRY_ABI from "../abis/registry";
+import LOAN_MANAGER_ABI from "../abis/loanManager";
 
 // Type definitions for loan data
 export interface LoanData {
@@ -126,10 +25,10 @@ export interface LoanData {
 
 export function useLoanManager() {
   // Get loan manager address from registry
-  const { data: loanManagerAddress } = useReadContract({
+  const { data: loanManagerAddress, isLoading: loanManagerLoading } = useReadContract({
     address: CONTRACT_ADDRESSES.PERMISSIONLESS_REGISTRY as `0x${string}`,
     abi: REGISTRY_ABI,
-    functionName: "i_loanManager",
+    functionName: "loanManager",
     query: {
       enabled: !!CONTRACT_ADDRESSES.PERMISSIONLESS_REGISTRY,
     },
@@ -137,6 +36,7 @@ export function useLoanManager() {
 
   return {
     loanManagerAddress: loanManagerAddress as string,
+    isLoading: loanManagerLoading,
   };
 }
 
@@ -171,7 +71,7 @@ export function useTokenPrice(tokenAddress: string, usdAmount: number, refetchKe
 }
 
 export function useLenderAvailableFunds(lenderAddress: string, allowedTokens: string[]) {
-  const { loanManagerAddress } = useLoanManager();
+  const { loanManagerAddress, isLoading: loanManagerLoading } = useLoanManager();
 
   // Create contracts for getting token balances
   const balanceContracts = allowedTokens.map(tokenAddress => ({
@@ -189,14 +89,14 @@ export function useLenderAvailableFunds(lenderAddress: string, allowedTokens: st
     args: [tokenAddress as `0x${string}`, BigInt(10**18)], // 1 token with 18 decimals
   }));
 
-  const { data: balanceResults } = useReadContracts({
+  const { data: balanceResults, isLoading: balancesLoading } = useReadContracts({
     contracts: balanceContracts as any,
     query: {
       enabled: !!lenderAddress && allowedTokens.length > 0,
     },
   });
 
-  const { data: priceResults } = useReadContracts({
+  const { data: priceResults, isLoading: pricesLoading } = useReadContracts({
     contracts: priceContracts as any,
     query: {
       enabled: !!loanManagerAddress && allowedTokens.length > 0,
@@ -205,9 +105,10 @@ export function useLenderAvailableFunds(lenderAddress: string, allowedTokens: st
 
   // Calculate total available funds in USD
   let totalUsdValue = 0;
-  const isLoading = !balanceResults || !priceResults || !loanManagerAddress;
+  const isLoading = loanManagerLoading || balancesLoading || pricesLoading || 
+                   (allowedTokens.length > 0 && loanManagerAddress && (!balanceResults || !priceResults));
 
-  if (balanceResults && priceResults && !isLoading) {
+  if (balanceResults && priceResults && loanManagerAddress) {
     totalUsdValue = allowedTokens.reduce((total, tokenAddress, index) => {
       const balance = balanceResults[index]?.result as bigint;
       const pricePerToken = priceResults[index]?.result as bigint;
@@ -228,7 +129,7 @@ export function useLenderAvailableFunds(lenderAddress: string, allowedTokens: st
 }
 
 export function useLenderTokenBalances(lenderAddress: string, allowedTokens: string[]) {
-  const { loanManagerAddress } = useLoanManager();
+  const { loanManagerAddress, isLoading: loanManagerLoading } = useLoanManager();
 
   // Create contracts for getting token balances
   const balanceContracts = allowedTokens.map(tokenAddress => ({
@@ -246,14 +147,14 @@ export function useLenderTokenBalances(lenderAddress: string, allowedTokens: str
     args: [tokenAddress as `0x${string}`, BigInt(10**18)], // 1 token with 18 decimals
   }));
 
-  const { data: balanceResults } = useReadContracts({
+  const { data: balanceResults, isLoading: balancesLoading } = useReadContracts({
     contracts: balanceContracts as any,
     query: {
       enabled: !!lenderAddress && allowedTokens.length > 0,
     },
   });
 
-  const { data: priceResults } = useReadContracts({
+  const { data: priceResults, isLoading: pricesLoading } = useReadContracts({
     contracts: priceContracts as any,
     query: {
       enabled: !!loanManagerAddress && allowedTokens.length > 0,
@@ -262,9 +163,10 @@ export function useLenderTokenBalances(lenderAddress: string, allowedTokens: str
 
   // Calculate individual token balances in USD
   const tokenBalances: { [tokenAddress: string]: { balance: number; usdValue: number } } = {};
-  const isLoading = !balanceResults || !priceResults || !loanManagerAddress;
+  const isLoading = loanManagerLoading || balancesLoading || pricesLoading || 
+                   (allowedTokens.length > 0 && loanManagerAddress && (!balanceResults || !priceResults));
 
-  if (balanceResults && priceResults && !isLoading) {
+  if (balanceResults && priceResults && loanManagerAddress) {
     allowedTokens.forEach((tokenAddress, index) => {
       const balance = balanceResults[index]?.result as bigint;
       const pricePerToken = priceResults[index]?.result as bigint;
@@ -323,10 +225,10 @@ export function useCreateLoan() {
 }
 
 export function useBorrowerLoans(borrowerAddress: string) {
-  const { loanManagerAddress } = useLoanManager();
+  const { loanManagerAddress, isLoading: loanManagerLoading } = useLoanManager();
 
   // Get loan addresses for the borrower
-  const { data: loanAddresses } = useReadContract({
+  const { data: loanAddresses, isLoading: loanAddressesLoading } = useReadContract({
     address: loanManagerAddress as `0x${string}`,
     abi: LOAN_MANAGER_ABI,
     functionName: "getBorrowerLoans",
@@ -347,7 +249,7 @@ export function useBorrowerLoans(borrowerAddress: string) {
   }));
 
   // Get all loan data in one batch
-  const { data: loanDataResults } = useReadContracts({
+  const { data: loanDataResults, isLoading: loanDataLoading } = useReadContracts({
     contracts: loanDataContracts as any,
     query: {
       enabled: !!loanManagerAddress && loanAddressList.length > 0,
@@ -356,42 +258,53 @@ export function useBorrowerLoans(borrowerAddress: string) {
 
   console.log("data results", loanDataResults);
 
-  // Create contracts for getting current values
+  // Create contracts for getting current values - keep track of valid indices
+  const validLoanIndices: number[] = [];
   const currentValueContracts = loanDataResults?.map((result, index) => {
     const loanData = result.result as any;
+    // Only create contract if we have valid loan data
+    if (!loanData || !loanData.wallet || !loanData.tokens) {
+      return null;
+    }
+    validLoanIndices.push(index);
     return {
       address: loanManagerAddress as `0x${string}`,
       abi: LOAN_MANAGER_ABI,
       functionName: "getWalletValueUSD",
       args: [
-        loanData?.wallet as `0x${string}` || "0x0000000000000000000000000000000000000000",
-        loanData?.tokens as `0x${string}`[] || []
+        loanData.wallet as `0x${string}`,
+        loanData.tokens as `0x${string}`[]
       ],
     };
-  }) || [];
+  }).filter(contract => contract !== null) || [];
 
   // Get all current values in one batch
-  const { data: currentValueResults } = useReadContracts({
+  const { data: currentValueResults, isLoading: currentValueLoading } = useReadContracts({
     contracts: currentValueContracts as any,
     query: {
       enabled: !!loanManagerAddress && currentValueContracts.length > 0,
     },
   });
 
-  const { data: ethPrice } = useReadContract({
+  const { data: ethPrice, isLoading: ethPriceLoading } = useReadContract({
     address: loanManagerAddress as `0x${string}`,
     abi: LOAN_MANAGER_ABI,
     functionName: "getTokenValueUSD",
     args: [TOKEN_ADDRESSES.WETH as `0x${string}`, BigInt(10**18)],
+    query: {
+      enabled: !!loanManagerAddress,
+    },
   });
 
   // Process loan data
   const loans: LoanData[] = [];
   
-  if (loanDataResults && currentValueResults && ethPrice) {
+  if (loanDataResults && ethPrice) {
     loanDataResults.forEach((result, index) => {
       const loanData = result.result as any;
-      const currentValue = currentValueResults[index]?.result as bigint;
+      // Find the corresponding current value result for this loan
+      const validResultIndex = validLoanIndices.indexOf(index);
+      const currentValue = validResultIndex >= 0 ? currentValueResults?.[validResultIndex]?.result as bigint : undefined;
       
       if (loanData) {
         // Calculate collateral current value based on the collateralEthAmount
@@ -403,12 +316,12 @@ export function useBorrowerLoans(borrowerAddress: string) {
         console.log({
           collateralEthAmount: loanData.collateralEthAmount.toString(),
           initialLoanValue: loanData.initialLoanValue.toString(),
-          currentValue: currentValue.toString(),
+          currentValue: currentValue ? currentValue.toString() : "undefined",
           calculatedValue: collateralCurrentValue.toString(),
           // Add human readable values for debugging
           collateralEthAmountReadable: Number(loanData.collateralEthAmount) / 1e8,
           initialLoanValueReadable: Number(loanData.initialLoanValue) / 1e8,
-          currentValueReadable: Number(currentValue) / 1e8,
+          currentValueReadable: currentValue ? Number(currentValue) / 1e8 : 0,
           calculatedValueReadable: Number(collateralCurrentValue) / 1e8
         });
         
@@ -430,7 +343,12 @@ export function useBorrowerLoans(borrowerAddress: string) {
     });
   }
 
-  const isLoading = !loanAddresses || !loanDataResults || !currentValueResults;
+  // Fix loading logic to handle the case when there are no loans
+  const isLoading = loanManagerLoading || 
+                   loanAddressesLoading || 
+                   ethPriceLoading ||
+                   (loanAddressList.length > 0 && (loanDataLoading || currentValueLoading));
+
   const error = loanDataResults?.find(result => result.error)?.error?.message || 
                 currentValueResults?.find(result => result.error)?.error?.message;
 
@@ -438,5 +356,38 @@ export function useBorrowerLoans(borrowerAddress: string) {
     loans,
     isLoading,
     error,
+  };
+}
+
+export function useWalletTokenBalances(walletAddress: string, tokens: string[]) {
+  // Create contracts for getting token balances from the wallet
+  const balanceContracts = tokens.map(tokenAddress => ({
+    address: tokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [walletAddress as `0x${string}`],
+  }));
+
+  const { data: balanceResults, isLoading: balancesLoading } = useReadContracts({
+    contracts: balanceContracts as any,
+    query: {
+      enabled: !!walletAddress && tokens.length > 0,
+    },
+  });
+
+  // Calculate individual token balances
+  const tokenBalances: { [tokenAddress: string]: bigint } = {};
+  const isLoading = balancesLoading || (tokens.length > 0 && !balanceResults);
+
+  if (balanceResults) {
+    tokens.forEach((tokenAddress, index) => {
+      const balance = balanceResults[index]?.result as bigint;
+      tokenBalances[tokenAddress] = balance || BigInt(0);
+    });
+  }
+
+  return {
+    tokenBalances,
+    isLoading,
   };
 } 

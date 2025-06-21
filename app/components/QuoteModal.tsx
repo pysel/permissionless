@@ -4,8 +4,10 @@ import { useTokenPrice } from "@/lib/hooks/useLoanManager";
 import { getTokenInfo, TOKEN_ADDRESSES } from "@/lib/tokenLogos";
 import { formatUnits } from "viem";
 import { useState, useEffect } from "react";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useAccount } from "wagmi";
 import { useLoanManager } from "@/lib/hooks/useLoanManager";
+import ERC20_ABI from "@/lib/abis/erc20";
+import { useLoanCreator } from "@/lib/hooks/useLoanCreator";
 
 interface QuoteModalProps {
   isOpen: boolean;
@@ -15,20 +17,6 @@ interface QuoteModalProps {
   onConfirm: () => void;
   lenderAddress: string;
 }
-
-// ERC20 Approve ABI
-const ERC20_APPROVE_ABI = [
-  {
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" }
-    ],
-    name: "approve",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
 
 // Loading spinner component
 function LoadingSpinner({ size = "w-4 h-4" }: { size?: string }) {
@@ -66,12 +54,25 @@ export default function QuoteModal({
   const [approvalStep, setApprovalStep] = useState<'idle' | 'approving' | 'approved' | 'creating'>('idle');
   
   const { loanManagerAddress } = useLoanManager();
+  const { loanCreatorAddress } = useLoanCreator();
+  const { address: userAddress } = useAccount();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   
   const { isLoading: isConfirming, isSuccess: isConfirmed } = 
     useWaitForTransactionReceipt({ 
       hash,
     });
+
+  // Check current WETH allowance for the loan creator
+  const { data: currentAllowance, isLoading: allowanceLoading, refetch: refetchAllowance } = useReadContract({
+    address: TOKEN_ADDRESSES.WETH as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: [userAddress as `0x${string}`, loanCreatorAddress as `0x${string}`],
+    query: {
+      enabled: !!userAddress && !!loanCreatorAddress && isOpen,
+    },
+  });
 
   // Get active tokens with their USD amounts - calculate this early
   const activeTokens = Object.entries(selectedTokens).filter(([_, amount]) => amount && parseFloat(amount) > 0);
@@ -132,31 +133,54 @@ export default function QuoteModal({
     refetchKey
   );
 
+  // Calculate required WETH amount for collateral
+  const requiredWethAmount = ethTokenInfo.tokenAmount || BigInt(0);
+
+  // Check if approval is needed
+  const needsApproval = !allowanceLoading && currentAllowance !== undefined && 
+                       requiredWethAmount > 0 && 
+                       (currentAllowance as bigint) < requiredWethAmount;
+
   // Force refetch when modal opens
   useEffect(() => {
     if (isOpen) {
       setRefetchKey(prev => prev + 1);
+      // Also refetch allowance
+      refetchAllowance();
     }
-  }, [isOpen]);
+  }, [isOpen, refetchAllowance]);
+
+  // Set initial approval step based on allowance
+  useEffect(() => {
+    if (!allowanceLoading && currentAllowance !== undefined && requiredWethAmount > 0) {
+      if ((currentAllowance as bigint) >= requiredWethAmount) {
+        // Already approved, skip to ready state
+        setApprovalStep('approved');
+      } else {
+        // Need approval
+        setApprovalStep('idle');
+      }
+    }
+  }, [allowanceLoading, currentAllowance, requiredWethAmount]);
 
   // Handle transaction success
   useEffect(() => {
     if (isConfirmed) {
       if (approvalStep === 'approving') {
-        // Approval confirmed, now ready to create loan
+        // Approval confirmed, refetch allowance and set to approved
+        refetchAllowance();
         setApprovalStep('approved');
         setIsSubmitting(false);
         // Don't close modal yet, user needs to confirm loan creation
       } else if (approvalStep === 'creating') {
         // Loan creation confirmed
-        alert("Loan created successfully!");
         setIsSubmitting(false);
         setApprovalStep('idle');
         onConfirm();
         onClose();
       }
     }
-  }, [isConfirmed, approvalStep, onConfirm, onClose]);
+  }, [isConfirmed, approvalStep, onConfirm, onClose, refetchAllowance]);
 
   // Handle transaction error
   useEffect(() => {
@@ -194,18 +218,18 @@ export default function QuoteModal({
         return;
       }
 
-      if (approvalStep === 'idle') {
-        // Step 1: Approve WETH spending
+      if (approvalStep === 'idle' && needsApproval) {
+        // Step 1: Approve WETH spending (only if needed)
         setApprovalStep('approving');
         
         writeContract({
           address: TOKEN_ADDRESSES.WETH as `0x${string}`,
-          abi: ERC20_APPROVE_ABI,
+          abi: ERC20_ABI,
           functionName: "approve",
-          args: [loanManagerAddress as `0x${string}`, BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")], // Max uint256
+          args: [loanCreatorAddress as `0x${string}`, BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")], // Max uint256
         });
         
-      } else if (approvalStep === 'approved') {
+      } else if (approvalStep === 'approved' || (approvalStep === 'idle' && !needsApproval)) {
         // Step 2: Create the loan
         setApprovalStep('creating');
         
@@ -416,8 +440,12 @@ export default function QuoteModal({
                 </div>
               ) : approvalStep === 'approved' ? (
                 "Submit"
-              ) : (
+              ) : needsApproval ? (
                 "Approve WETH"
+              ) : allowanceLoading ? (
+                ""
+              ) : (
+                "Submit"
               )}
             </button>
           </div>

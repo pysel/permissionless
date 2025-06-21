@@ -84,7 +84,6 @@ export default function LenderDetailsPage() {
     });
     
     setShowQuoteModal(false);
-    alert("Loan request functionality will be implemented here!");
   };
 
   if (isLoading) {

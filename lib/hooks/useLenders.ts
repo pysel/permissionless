@@ -2,48 +2,8 @@
 
 import { useReadContract, useReadContracts } from "wagmi";
 import { useState, useEffect } from "react";
-
-// Contract ABIs (simplified)
-const REGISTRY_ABI = [
-  {
-    inputs: [],
-    name: "getAllRegisteredLoaners",
-    outputs: [{ name: "", type: "address[]" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const LOANER_ABI = [
-  {
-    inputs: [],
-    name: "isActive",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getAllowedTokens",
-    outputs: [{ name: "", type: "address[]" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "createdLoans",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "i_loanSigner",
-    outputs: [{ name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import REGISTRY_ABI from "../abis/registry";
+import LOANER_ABI from "../abis/loaner";
 
 export interface LenderData {
   address: string;
@@ -55,13 +15,12 @@ export interface LenderData {
 
 export function useLenders(registryAddress?: string) {
   const [lenders, setLenders] = useState<LenderData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Debug: Log the registry address
   console.log('🔍 Registry Address:', registryAddress);
 
   // Get all registered lender addresses
-  const { data: lenderAddresses } = useReadContract({
+  const { data: lenderAddresses, isLoading: lenderAddressesLoading } = useReadContract({
     address: registryAddress as `0x${string}`,
     abi: REGISTRY_ABI,
     functionName: "getAllRegisteredLoaners",
@@ -73,8 +32,10 @@ export function useLenders(registryAddress?: string) {
   // Debug: Log lender addresses
   console.log('📋 Lender Addresses:', lenderAddresses);
 
+  const lenderAddressList = (lenderAddresses as string[]) || [];
+
   // Create contracts array for batch reading
-  const contracts = lenderAddresses?.flatMap((address) => [
+  const contracts = lenderAddressList.flatMap((address) => [
     {
       address: address as `0x${string}`,
       abi: LOANER_ABI,
@@ -93,29 +54,34 @@ export function useLenders(registryAddress?: string) {
     {
       address: address as `0x${string}`,
       abi: LOANER_ABI,
-      functionName: "i_loanSigner",
+      functionName: "loanSigner",
     },
-  ]) || [];
+  ]);
 
   // Debug: Log contracts array
   console.log('📊 Contracts Array Length:', contracts.length);
 
-  const { data: contractResults } = useReadContracts({
+  const { data: contractResults, isLoading: contractResultsLoading } = useReadContracts({
     contracts: contracts as any,
     query: {
-      enabled: !!lenderAddresses && lenderAddresses.length > 0,
+      enabled: !!lenderAddresses && lenderAddressList.length > 0,
     },
   });
 
   // Debug: Log contract results
   console.log('📈 Contract Results:', contractResults);
 
+  // Calculate loading state properly
+  const isLoading = lenderAddressesLoading || 
+                   (lenderAddressList.length > 0 && contractResultsLoading);
+
   useEffect(() => {
-    if (lenderAddresses && contractResults) {
+    // Handle the case when we have lender addresses and contract results
+    if (lenderAddresses && lenderAddressList.length > 0 && contractResults) {
       console.log('🔄 Processing lender data...');
       const parsedLenders: LenderData[] = [];
       
-      for (let i = 0; i < lenderAddresses.length; i++) {
+      for (let i = 0; i < lenderAddressList.length; i++) {
         const baseIndex = i * 4;
         const isActive = contractResults[baseIndex]?.result as boolean;
         const allowedTokens = contractResults[baseIndex + 1]?.result as string[];
@@ -124,7 +90,7 @@ export function useLenders(registryAddress?: string) {
 
         // Debug: Log individual lender data
         console.log(`👤 Lender ${i + 1}:`, {
-          address: lenderAddresses[i],
+          address: lenderAddressList[i],
           isActive,
           allowedTokens,
           createdLoans: Number(createdLoans),
@@ -132,7 +98,7 @@ export function useLenders(registryAddress?: string) {
         });
 
         parsedLenders.push({
-          address: lenderAddresses[i],
+          address: lenderAddressList[i],
           isActive: isActive || false,
           allowedTokens: allowedTokens || [],
           createdLoans: Number(createdLoans) || 0,
@@ -147,13 +113,17 @@ export function useLenders(registryAddress?: string) {
 
       console.log('🏆 Final Sorted Lenders:', sortedLenders);
       setLenders(sortedLenders);
-      setIsLoading(false);
+    } 
+    // Handle the case when we have confirmed there are no lenders
+    else if (lenderAddresses && lenderAddressList.length === 0) {
+      console.log('📭 No lenders found');
+      setLenders([]);
     }
-  }, [lenderAddresses, contractResults]);
+  }, [lenderAddresses, contractResults, lenderAddressList.length]);
 
   return {
     lenders,
     isLoading,
-    totalLenders: lenderAddresses?.length || 0,
+    totalLenders: lenderAddressList.length,
   };
 } 
