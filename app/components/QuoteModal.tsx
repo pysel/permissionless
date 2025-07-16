@@ -8,6 +8,7 @@ import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useAcc
 import { useLoanManager } from "@/lib/hooks/useLoanManager";
 import ERC20_ABI from "@/lib/abis/erc20";
 import { useLoanCreator } from "@/lib/hooks/useLoanCreator";
+import TransactionConfirmationModal, { TransactionConfirmationConfig } from "./TransactionConfirmationModal";
 
 interface QuoteModalProps {
   isOpen: boolean;
@@ -52,6 +53,10 @@ export default function QuoteModal({
   const [refetchKey, setRefetchKey] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [approvalStep, setApprovalStep] = useState<'idle' | 'approving' | 'approved' | 'creating'>('idle');
+  
+  // Transaction confirmation state
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationConfig, setConfirmationConfig] = useState<TransactionConfirmationConfig | null>(null);
   
   const { loanManagerAddress } = useLoanManager();
   const { loanCreatorAddress } = useLoanCreator();
@@ -165,28 +170,66 @@ export default function QuoteModal({
 
   // Handle transaction success
   useEffect(() => {
-    if (isConfirmed) {
+    if (isConfirmed && hash) {
       if (approvalStep === 'approving') {
-        // Approval confirmed, refetch allowance and set to approved
+        // Approval confirmed, show confirmation modal
+        setConfirmationConfig({
+          type: 'ethereum',
+          title: 'Approval Confirmed',
+          message: 'Your WETH approval has been confirmed. You can now proceed with borrowing.',
+          txHash: hash,
+          explorerUrl: 'https://etherscan.io',
+          icon: 'approve',
+          autoClose: true,
+          autoCloseDelay: 3000
+        });
+        setShowConfirmation(true);
+        
+        // Update state
         refetchAllowance();
         setApprovalStep('approved');
         setIsSubmitting(false);
-        // Don't close modal yet, user needs to confirm loan creation
       } else if (approvalStep === 'creating') {
-        // Loan creation confirmed
+        // Loan creation confirmed, show confirmation modal
+        setConfirmationConfig({
+          type: 'ethereum',
+          title: 'Loan Created Successfully',
+          message: 'Your loan has been successfully created! You can now manage it from the dashboard.',
+          txHash: hash,
+          explorerUrl: 'https://etherscan.io',
+          icon: 'borrow',
+          autoClose: false
+        });
+        setShowConfirmation(true);
+        
+        // Update state and close after showing confirmation
         setIsSubmitting(false);
         setApprovalStep('idle');
-        onConfirm();
-        onClose();
+        
+        // Close original modal after short delay to let user see confirmation
+        setTimeout(() => {
+          onConfirm();
+          onClose();
+        }, 4000);
       }
     }
-  }, [isConfirmed, approvalStep, onConfirm, onClose, refetchAllowance]);
+  }, [isConfirmed, hash, approvalStep, onConfirm, onClose, refetchAllowance]);
 
   // Handle transaction error
   useEffect(() => {
     if (error) {
       console.error("Transaction error:", error);
-      alert(`Transaction failed: ${error.message}`);
+      
+      // Show error confirmation modal
+      setConfirmationConfig({
+        type: 'ethereum',
+        title: 'Transaction Failed',
+        message: `Transaction failed: ${error.message}`,
+        icon: 'error',
+        autoClose: false
+      });
+      setShowConfirmation(true);
+      
       setIsSubmitting(false);
       setApprovalStep('idle');
     }
@@ -205,7 +248,15 @@ export default function QuoteModal({
 
   const handleConfirm = async () => {
     if (!loanManagerAddress) {
-      alert("Loan manager not available");
+      setConfirmationConfig({
+        type: 'ethereum',
+        title: 'Service Unavailable',
+        message: 'Loan manager is not available. Please try again later.',
+        icon: 'error',
+        autoClose: true,
+        autoCloseDelay: 3000
+      });
+      setShowConfirmation(true);
       return;
     }
 
@@ -213,7 +264,15 @@ export default function QuoteModal({
     
     try {
       if (activeTokens.length === 0) {
-        alert("No tokens selected");
+        setConfirmationConfig({
+          type: 'ethereum',
+          title: 'No Tokens Selected',
+          message: 'Please select at least one token to borrow.',
+          icon: 'error',
+          autoClose: true,
+          autoCloseDelay: 3000
+        });
+        setShowConfirmation(true);
         setIsSubmitting(false);
         return;
       }
@@ -247,7 +306,15 @@ export default function QuoteModal({
             tokenAddresses.push(tokenAddress);
             tokenAmounts.push(tokenPriceInfo.tokenAmount);
           } else {
-            alert(`Failed to calculate amount for token ${tokenAddress}`);
+            setConfirmationConfig({
+              type: 'ethereum',
+              title: 'Calculation Error',
+              message: `Failed to calculate amount for token ${tokenAddress}. Please try again.`,
+              icon: 'error',
+              autoClose: true,
+              autoCloseDelay: 4000
+            });
+            setShowConfirmation(true);
             setIsSubmitting(false);
             setApprovalStep('idle');
             return;
@@ -293,7 +360,15 @@ export default function QuoteModal({
 
     } catch (error) {
       console.error("Error in transaction:", error);
-      alert("Transaction failed. Please try again.");
+      setConfirmationConfig({
+        type: 'ethereum',
+        title: 'Transaction Error',
+        message: 'Transaction failed. Please try again.',
+        icon: 'error',
+        autoClose: true,
+        autoCloseDelay: 4000
+      });
+      setShowConfirmation(true);
       setIsSubmitting(false);
       setApprovalStep('idle');
     }
@@ -451,6 +526,18 @@ export default function QuoteModal({
           </div>
         </div>
       </div>
+
+      {/* Transaction Confirmation Modal */}
+      {confirmationConfig && (
+        <TransactionConfirmationModal
+          isOpen={showConfirmation}
+          onClose={() => {
+            setShowConfirmation(false);
+            setConfirmationConfig(null);
+          }}
+          config={confirmationConfig}
+        />
+      )}
     </>
   );
 } 

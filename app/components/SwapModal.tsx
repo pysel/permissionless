@@ -7,6 +7,7 @@ import { getTokenInfo } from "@/lib/tokenLogos";
 import { useLoanManager } from "@/lib/hooks/useLoanManager";
 import LOAN_MANAGER_ABI from "@/lib/abis/loanManager";
 import WALLET_ABI from "@/lib/abis/wallet";
+import TransactionConfirmationModal, { TransactionConfirmationConfig } from "./TransactionConfirmationModal";
 
 // Extend Window interface to include ethereum
 declare global {
@@ -46,6 +47,10 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [swapParams, setSwapParams] = useState<SwapParams | null>(null);
+  
+  // Transaction confirmation state
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationConfig, setConfirmationConfig] = useState<TransactionConfirmationConfig | null>(null);
 
   const { loanManagerAddress } = useLoanManager();
   const { address: connectedAddress } = useAccount();
@@ -186,12 +191,19 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
       return; // Don't update if there are multiple decimal points
     }
     
+    // Prevent leading zeros unless it's a decimal (0.xxx)
+    if (cleanValue.length > 1 && cleanValue[0] === '0' && cleanValue[1] !== '.') {
+      return;
+    }
+    
     // Limit decimal places based on token precision
     if (parts.length === 2 && parts[1].length > precision) {
       const truncatedValue = parts[0] + '.' + parts[1].substring(0, precision);
       setFromAmount(truncatedValue);
       return;
     }
+
+
     
     setFromAmount(cleanValue);
   };
@@ -199,9 +211,19 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
   const handleSwap = async () => {
     // Check authorization first
     if (!isAuthorized) {
-      alert(`You must connect with the borrower wallet (${borrowerAddress}) to perform swaps.`);
+      setConfirmationConfig({
+        type: 'intent',
+        title: 'Wrong Wallet Connected',
+        message: `You must connect with the borrower wallet (${borrowerAddress}) to perform swaps.`,
+        icon: 'error',
+        autoClose: true,
+        autoCloseDelay: 4000
+      });
+      setShowConfirmation(true);
       return;
     }
+
+
 
     // Better debugging for missing data
     console.log("Swap validation:", {
@@ -215,29 +237,56 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
       borrowerAddress,
       isAuthorized
     });
-
-    if (!fromAmount) {
-      alert("Please enter an amount to swap");
-      return;
-    }
     
     if (!estimatedAmountOut) {
-      alert("Estimated amount is not calculated yet. Please wait.");
+      setConfirmationConfig({
+        type: 'intent',
+        title: 'Calculation Pending',
+        message: 'Estimated amount is not calculated yet. Please wait.',
+        icon: 'loading',
+        autoClose: true,
+        autoCloseDelay: 3000
+      });
+      setShowConfirmation(true);
       return;
     }
     
     if (nonceLoading) {
-      alert("Loading wallet nonce. Please wait a moment.");
+      setConfirmationConfig({
+        type: 'intent',
+        title: 'Loading',
+        message: 'Loading wallet nonce. Please wait a moment.',
+        icon: 'loading',
+        autoClose: true,
+        autoCloseDelay: 3000
+      });
+      setShowConfirmation(true);
       return;
     }
     
     if (!currentNonce && currentNonce !== BigInt(0)) {
-      alert("Unable to fetch wallet nonce. Please try again.");
+      setConfirmationConfig({
+        type: 'intent',
+        title: 'Nonce Error',
+        message: 'Unable to fetch wallet nonce. Please try again.',
+        icon: 'error',
+        autoClose: true,
+        autoCloseDelay: 3000
+      });
+      setShowConfirmation(true);
       return;
     }
     
     if (!walletAddress) {
-      alert("Wallet address is missing");
+      setConfirmationConfig({
+        type: 'intent',
+        title: 'Wallet Missing',
+        message: 'Wallet address is missing. Please try again.',
+        icon: 'error',
+        autoClose: true,
+        autoCloseDelay: 3000
+      });
+      setShowConfirmation(true);
       return;
     }
 
@@ -267,7 +316,15 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
       // This will be handled by the useEffect below
     } catch (error) {
       console.error("Error preparing swap:", error);
-      alert("Failed to prepare swap. Please try again.");
+      setConfirmationConfig({
+        type: 'intent',
+        title: 'Swap Preparation Failed',
+        message: 'Failed to prepare swap. Please try again.',
+        icon: 'error',
+        autoClose: true,
+        autoCloseDelay: 4000
+      });
+      setShowConfirmation(true);
       setIsSwapping(false);
     }
   };
@@ -288,11 +345,19 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
       console.error("Signing failed:", signError);
       
       // Handle different error types
-      if (signError.message.includes('rejected') || signError.message.includes('denied')) {
-        alert("Signature request was rejected. Please try again and approve the signature in your wallet.");
-      } else {
-        alert(`Failed to sign swap intent: ${signError.message}. Please try again.`);
-      }
+      const isUserRejection = signError.message.includes('rejected') || signError.message.includes('denied');
+      
+      setConfirmationConfig({
+        type: 'intent',
+        title: isUserRejection ? 'Signature Rejected' : 'Signing Failed',
+        message: isUserRejection 
+          ? 'Signature request was rejected. Please try again and approve the signature in your wallet.'
+          : `Failed to sign swap intent: ${signError.message}. Please try again.`,
+        icon: 'error',
+        autoClose: true,
+        autoCloseDelay: 5000
+      });
+      setShowConfirmation(true);
       
       // Reset swap state on error
       setIsSwapping(false);
@@ -343,16 +408,26 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
         const responseData = await response.json();
         console.log("Swap response:", responseData);
         
-        // Show success message immediately - swap was successful
-        alert("Swap intent submitted successfully!");
+        // Show success confirmation modal
+        setConfirmationConfig({
+          type: 'intent',
+          title: 'Swap Intent Submitted',
+          message: 'Your swap intent has been successfully submitted to the lender for co-signature!',
+          icon: 'swap',
+          autoClose: true,
+          autoCloseDelay: 4000
+        });
+        setShowConfirmation(true);
         
         // Call the success callback if provided
         if (onSwapSuccess) {
           onSwapSuccess();
         }
         
-        // Close the modal
-        onClose();
+        // Close the modal after showing confirmation
+        setTimeout(() => {
+          onClose();
+        }, 4000);
         
         // Handle cache invalidation separately - don't let errors here affect the success flow
         try {
@@ -399,7 +474,15 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
       }
     } catch (error) {
       console.error("Error sending swap intent:", error);
-      alert("Failed to submit swap intent. Please try again.");
+      setConfirmationConfig({
+        type: 'intent',
+        title: 'Submission Failed',
+        message: 'Failed to submit swap intent. Please try again.',
+        icon: 'error',
+        autoClose: true,
+        autoCloseDelay: 4000
+      });
+      setShowConfirmation(true);
     } finally {
       setIsSwapping(false);
       setSwapParams(null); // Reset for next swap
@@ -464,6 +547,7 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
                       onChange={(e) => handleFromAmountChange(e.target.value)}
                       placeholder="0.0"
                       className="bg-transparent text-right text-2xl font-bold focus:outline-none w-32"
+                      min="0"
                       max={fromTokenBalance}
                       step={`0.${'0'.repeat(Math.max(0, fromTokenInfo.precision - 1))}1`}
                     />
@@ -603,7 +687,7 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
             {/* Swap Button */}
             <button
               onClick={handleSwap}
-              disabled={!isAuthorized || !fromAmount || !estimatedAmountOut || isSwapping || isSigningPending || isCalculating || nonceLoading || hashLoading}
+              disabled={!isAuthorized || !fromAmount || parseFloat(fromAmount || '0') <= 0 || parseFloat(fromAmount || '0') > fromTokenBalance || !estimatedAmountOut || isSwapping || isSigningPending || isCalculating || nonceLoading || hashLoading}
               className="w-full bg-blue-600 text-white py-4 rounded-2xl font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {!isAuthorized ? (
@@ -630,6 +714,18 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
           </div>
         </div>
       </div>
+
+      {/* Transaction Confirmation Modal */}
+      {confirmationConfig && (
+        <TransactionConfirmationModal
+          isOpen={showConfirmation}
+          onClose={() => {
+            setShowConfirmation(false);
+            setConfirmationConfig(null);
+          }}
+          config={confirmationConfig}
+        />
+      )}
     </>
   );
 } 

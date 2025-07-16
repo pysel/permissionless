@@ -6,6 +6,8 @@ import { TOKEN_ADDRESSES } from "../tokenLogos";
 import ERC20_ABI from "../abis/erc20";
 import REGISTRY_ABI from "../abis/registry";
 import LOAN_MANAGER_ABI from "../abis/loanManager";
+import LOANER_ABI from "../abis/loaner";
+
 
 // Type definitions for loan data
 export interface LoanData {
@@ -258,31 +260,63 @@ export function useBorrowerLoans(borrowerAddress: string) {
 
   console.log("data results", loanDataResults);
 
-  // Create contracts for getting current values - keep track of valid indices
-  const validLoanIndices: number[] = [];
+  // Get allowed tokens for each loaner
+  const allowedTokensContracts = loanDataResults?.map((result, index) => {
+    const loanData = result.result as any;
+    if (!loanData || !loanData.loaner) {
+      return {
+        address: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+        abi: LOANER_ABI,
+        functionName: "getAllowedTokens",
+      };
+    }
+    return {
+      address: loanData.loaner as `0x${string}`,
+      abi: LOANER_ABI,
+      functionName: "getAllowedTokens",
+    };
+  }) || [];
+
+  const { data: allowedTokensResults, isLoading: allowedTokensLoading } = useReadContracts({
+    contracts: allowedTokensContracts as any,
+    query: {
+      enabled: !!loanManagerAddress && allowedTokensContracts.length > 0,
+    },
+  });
+
+  // Create contracts for getting current values using allowed tokens
   const currentValueContracts = loanDataResults?.map((result, index) => {
     const loanData = result.result as any;
-    // Only create contract if we have valid loan data
-    if (!loanData || !loanData.wallet || !loanData.tokens) {
-      return null;
+    const allowedTokens = allowedTokensResults?.[index]?.result as string[];
+    
+    // Only create contract if we have valid loan data and allowed tokens
+    if (!loanData || !loanData.wallet || !allowedTokens || allowedTokens.length === 0) {
+      return {
+        address: loanManagerAddress as `0x${string}`,
+        abi: LOAN_MANAGER_ABI,
+        functionName: "getWalletValueUSD",
+        args: [
+          "0x0000000000000000000000000000000000000000" as `0x${string}`,
+          [] as `0x${string}`[]
+        ],
+      };
     }
-    validLoanIndices.push(index);
     return {
       address: loanManagerAddress as `0x${string}`,
       abi: LOAN_MANAGER_ABI,
       functionName: "getWalletValueUSD",
       args: [
         loanData.wallet as `0x${string}`,
-        loanData.tokens as `0x${string}`[]
+        allowedTokens as `0x${string}`[] // Use allowed tokens instead of just originally borrowed tokens
       ],
     };
-  }).filter(contract => contract !== null) || [];
+  }) || [];
 
   // Get all current values in one batch
   const { data: currentValueResults, isLoading: currentValueLoading } = useReadContracts({
     contracts: currentValueContracts as any,
     query: {
-      enabled: !!loanManagerAddress && currentValueContracts.length > 0,
+      enabled: !!loanManagerAddress && currentValueContracts.length > 0 && !!allowedTokensResults,
     },
   });
 
@@ -302,9 +336,8 @@ export function useBorrowerLoans(borrowerAddress: string) {
   if (loanDataResults && ethPrice) {
     loanDataResults.forEach((result, index) => {
       const loanData = result.result as any;
-      // Find the corresponding current value result for this loan
-      const validResultIndex = validLoanIndices.indexOf(index);
-      const currentValue = validResultIndex >= 0 ? currentValueResults?.[validResultIndex]?.result as bigint : undefined;
+      // Get the corresponding current value result for this loan (indices match 1:1 now)
+      const currentValue = currentValueResults?.[index]?.result as bigint;
       
       if (loanData) {
         // Calculate collateral current value based on the collateralEthAmount
@@ -347,9 +380,10 @@ export function useBorrowerLoans(borrowerAddress: string) {
   const isLoading = loanManagerLoading || 
                    loanAddressesLoading || 
                    ethPriceLoading ||
-                   (loanAddressList.length > 0 && (loanDataLoading || currentValueLoading));
+                   (loanAddressList.length > 0 && (loanDataLoading || allowedTokensLoading || currentValueLoading));
 
   const error = loanDataResults?.find(result => result.error)?.error?.message || 
+                allowedTokensResults?.find(result => result.error)?.error?.message ||
                 currentValueResults?.find(result => result.error)?.error?.message;
 
   return {

@@ -8,6 +8,7 @@ import Link from "next/link";
 import WalletConnect from "../../components/WalletConnect";
 import { ConnectWalletPrompt } from "../../components/ConnectWalletPrompt";
 import { useBorrowerLoans, useLoanManager, useWalletTokenBalances } from "@/lib/hooks/useLoanManager";
+import { useLoanerAllowedTokens } from "@/lib/hooks/useLoaners";
 import { getTokenInfo } from "@/lib/tokenLogos";
 import { formatUsdAmount } from "@/lib/utils/format";
 import LOAN_MANAGER_ABI from "@/lib/abis/loanManager";
@@ -151,20 +152,29 @@ export default function LoanDetailsPage() {
   // State for swap modal
   const [showSwapModal, setShowSwapModal] = useState(false);
 
-  // Get current wallet token balances (actual amounts after swaps)
+  // Get allowed tokens for the loaner
+  const { allowedTokens, isLoading: allowedTokensLoading } = useLoanerAllowedTokens(loan?.loaner || "");
+
+  // Get current wallet token balances for all allowed tokens (not just loan tokens)
   const { tokenBalances: currentTokenBalances, isLoading: balancesLoading } = useWalletTokenBalances(
     loan?.wallet || "",
-    loan?.tokens || []
+    allowedTokens || []
   );
 
-  // Get USD values for tokens with current amounts from wallet
-  const currentAmounts = loan?.tokens.map((tokenAddress: string) => 
+  // Filter allowed tokens to only show tokens with balances > 0
+  const tokensWithBalances = allowedTokens.filter((tokenAddress: string) => {
+    const balance = currentTokenBalances[tokenAddress] || BigInt(0);
+    return balance > BigInt(0);
+  });
+
+  // Get USD values for tokens with current amounts from wallet (for all allowed tokens)
+  const currentAmounts = allowedTokens.map((tokenAddress: string) => 
     currentTokenBalances[tokenAddress] || BigInt(0)
   ) || [];
 
   // Fetch real USD values for tokens using current amounts
   const { tokenUsdValues, isLoading: usdValuesLoading } = useTokenUsdValues(
-    loan?.tokens || [],
+    allowedTokens || [],
     currentAmounts,
     loanManagerAddress || ""
   );
@@ -360,7 +370,7 @@ export default function LoanDetailsPage() {
             <div className="lg:col-span-2">
               <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900">Borrowed Tokens</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">Wallet Tokens</h2>
                   <button
                     onClick={() => setShowSwapModal(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -372,7 +382,18 @@ export default function LoanDetailsPage() {
                   </button>
                 </div>
                 <div className="space-y-6">
-                  {loan.tokens.map((tokenAddress: string, index: number) => {
+                  {tokensWithBalances.length === 0 && !balancesLoading && !allowedTokensLoading ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Tokens Available</h3>
+                      <p className="text-gray-500 text-sm">Your wallet currently has no balances for the allowed tokens.</p>
+                    </div>
+                  ) : (
+                    tokensWithBalances.map((tokenAddress: string, index: number) => {
                     const tokenInfo = getTokenInfo(tokenAddress);
                     // Use current wallet balance instead of original loan amount
                     const currentBalance = currentTokenBalances[tokenAddress] || BigInt(0);
@@ -423,7 +444,8 @@ export default function LoanDetailsPage() {
                         </div>
                       </div>
                     );
-                  })}
+                    })
+                  )}
                 </div>
               </div>
             </div>
@@ -492,7 +514,7 @@ export default function LoanDetailsPage() {
       <SwapModal 
         isOpen={showSwapModal} 
         onClose={() => setShowSwapModal(false)} 
-        tokens={loan.tokens}
+        tokens={allowedTokens}
         amounts={currentAmounts}
         walletAddress={loan.wallet}
         borrowerAddress={loan.borrower}
