@@ -6,8 +6,7 @@ import Link from "next/link";
 import WalletConnect from "../components/WalletConnect";
 import { ConnectWalletPrompt } from "../components/ConnectWalletPrompt";
 import { useBorrowerLoans } from "@/lib/hooks/useLoanManager";
-import { calculateLoanStatus } from "./[address]/page";
-import { formatUsdAmount } from "@/lib/utils/format";
+import { formatUsdAmount, calculateLoanStatus } from "@/lib/utils/format";
 
 export default function ManagePage() {
   const { address, isConnected } = useAccount();
