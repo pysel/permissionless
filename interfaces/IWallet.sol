@@ -58,6 +58,10 @@ interface IPermissionlessWallet {
     /// @return Address of the loaner contract
     function loanerContract() external view returns (address);
 
+    /// @notice Get the Aave V3 Depositor contract address
+    /// @return Address of the Aave V3 Depositor contract
+    function aaveV3Depositor() external view returns (IAaveV3Depositor);
+
     /// @notice Get the current nonce
     /// @return Current nonce value
     function nonce() external view returns (uint256);

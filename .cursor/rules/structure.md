@@ -5,6 +5,7 @@
 ├── .cursor
 │   └── rules
 │       ├── guidelines.txt
+│       ├── project-description.md
 │       ├── structure.md
 │       └── update-structure.sh
 ├── .gitignore
@@ -19,6 +20,7 @@
 │   │   ├── Dashboard.tsx
 │   │   ├── LenderCard.tsx
 │   │   ├── QuoteModal.tsx
+│   │   ├── SupplyModal.tsx
 │   │   ├── SwapModal.tsx
 │   │   ├── TransactionConfirmationModal.tsx
 │   │   └── WalletConnect.tsx
@@ -33,8 +35,20 @@
 │   │   │   └── page.tsx
 │   │   └── page.tsx
 │   └── page.tsx
+├── interfaces
+│   ├── IAaveV3Depositor.sol
+│   ├── IAaveV3Pool.sol
+│   ├── ILoanCloser.sol
+│   ├── ILoanCreator.sol
+│   ├── ILoanLiquidator.sol
+│   ├── ILoanManager.sol
+│   ├── IPermissionlessRegistry.sol
+│   ├── ISwapRouter.sol
+│   ├── IWallet.sol
+│   └── Initializable.sol
 ├── lib
 │   ├── abis
+│   │   ├── aave.ts
 │   │   ├── erc20.ts
 │   │   ├── loanManager.ts
 │   │   ├── loaner.ts
@@ -43,6 +57,7 @@
 │   ├── config.ts
 │   ├── constants.ts
 │   ├── hooks
+│   │   ├── useAave.ts
 │   │   ├── useLenders.ts
 │   │   ├── useLoanCreator.ts
 │   │   ├── useLoanManager.ts
@@ -59,6 +74,7 @@
 ├── package.json
 ├── postcss.config.mjs
 ├── public
+│   ├── aave-logo.png
 │   ├── connect.png
 │   ├── file.svg
 │   ├── globe.svg
@@ -78,5 +94,5 @@
 │   └── Initializable.sol
 └── tsconfig.json
 
-16 directories, 60 files
+17 directories, 75 files
 ```

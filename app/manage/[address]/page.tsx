@@ -9,6 +9,7 @@ import WalletConnect from "../../components/WalletConnect";
 import { ConnectWalletPrompt } from "../../components/ConnectWalletPrompt";
 import { useBorrowerLoans, useLoanManager, useWalletTokenBalances } from "@/lib/hooks/useLoanManager";
 import { useLoanerAllowedTokens } from "@/lib/hooks/useLoaners";
+import { useAaveTokens } from "@/lib/hooks/useAave";
 import { getTokenInfo } from "@/lib/tokenLogos";
 import { formatUsdAmount, calculateLoanStatus } from "@/lib/utils/format";
 import LOAN_MANAGER_ABI from "@/lib/abis/loanManager";
@@ -159,6 +160,35 @@ export default function LoanDetailsPage() {
     currentAmounts,
     loanManagerAddress || ""
   );
+
+  // Define a unified type for the tokens
+  type TokenDisplayInfo = {
+    address: string;
+    aTokenAddress?: string;
+    balance: bigint;
+    isAave: boolean;
+  };
+
+  // Fetch Aave tokens
+  const { aaveTokens, isLoading: aaveTokensLoading } = useAaveTokens(
+    loan?.wallet || "",
+    allowedTokens || []
+  );
+
+  // Combine regular tokens and Aave tokens
+  const allTokens: TokenDisplayInfo[] = [
+    ...tokensWithBalances.map(tokenAddress => ({
+      address: tokenAddress,
+      balance: currentTokenBalances[tokenAddress] || BigInt(0),
+      isAave: false
+    })),
+    ...(aaveTokens || []).map((aaveToken: any) => ({
+      address: aaveToken.underlyingAsset,
+      aTokenAddress: aaveToken.aTokenAddress,
+      balance: aaveToken.balance,
+      isAave: true
+    }))
+  ];
 
   // Write contract hook for closing loan
   const { 
@@ -363,7 +393,7 @@ export default function LoanDetailsPage() {
                   </button>
                 </div>
                 <div className="space-y-6">
-                  {tokensWithBalances.length === 0 && !balancesLoading && !allowedTokensLoading ? (
+                  {allTokens.length === 0 && !balancesLoading && !allowedTokensLoading && !aaveTokensLoading ? (
                     <div className="text-center py-12">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,69 +404,82 @@ export default function LoanDetailsPage() {
                       <p className="text-gray-500 text-sm">Your wallet currently has no balances for the allowed tokens.</p>
                     </div>
                   ) : (
-                    tokensWithBalances.map((tokenAddress: string, index: number) => {
-                    const tokenInfo = getTokenInfo(tokenAddress);
-                    // Use current wallet balance instead of original loan amount
-                    const currentBalance = currentTokenBalances[tokenAddress] || BigInt(0);
-                    const tokenAmount = (Number(currentBalance) / 1e18);
-                    
-                    // Get real USD value from the hook
-                    const realUsdValue = tokenUsdValues[tokenAddress] || 0;
-                    
-                    return (
-                      <div key={tokenAddress} className="group">
-                        <div className="flex items-center gap-6 p-6 bg-white border border-gray-100 rounded-2xl hover:shadow-md transition-all duration-300 hover:border-blue-200">
-                          {/* Token Icon */}
-                          <div className="relative">
-                            <div className="w-16 h-16 rounded-full bg-white shadow-lg border-2 border-gray-100 flex items-center justify-center group-hover:border-blue-300 transition-colors duration-300">
-                              <img 
-                                src={tokenInfo.logoUrl} 
-                                alt={tokenInfo.symbol}
-                                className="w-10 h-10 rounded-full"
-                              />
-                            </div>
-                          </div>
-                          
-                          {/* Token Information */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-3">
-                              <div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-1">{tokenInfo.symbol}</h3>
-                                <p className="text-sm text-gray-500 font-mono truncate">{tokenAddress}</p>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-2xl font-bold text-gray-900 mb-1">
-                                  {balancesLoading ? (
-                                    <div className="animate-pulse bg-gray-200 h-8 w-24 rounded"></div>
-                                  ) : (
-                                    tokenAmount < 0.0001 ? tokenAmount.toExponential(3) : tokenAmount.toFixed(4)
-                                  )}
-                                </div>
-                                                              <div className="text-lg font-semibold text-green-600">
-                                {usdValuesLoading || balancesLoading ? (
-                                  <div className="animate-pulse bg-gray-200 h-6 w-20 rounded"></div>
-                                ) : (
-                                  `$${realUsdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    allTokens.map((token: TokenDisplayInfo, index: number) => {
+                      const tokenAddress = token.address;
+                      const tokenInfo = getTokenInfo(tokenAddress);
+                      const tokenAmount = (Number(token.balance) / 1e18);
+                      const realUsdValue = tokenUsdValues[tokenAddress] || 0;
+                      
+                      return (
+                        <div key={`${tokenAddress}-${token.isAave}`} className="group">
+                          <div className={`flex items-center gap-6 p-6 border rounded-2xl transition-all duration-300 hover:shadow-md ${token.isAave ? 'bg-purple-50 border-purple-200 hover:border-purple-300' : 'bg-white border-gray-100 hover:border-blue-200'}`}>
+                            {/* Token Icon */}
+                            <div className="relative">
+                              <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors duration-300 ${token.isAave ? 'bg-purple-100 group-hover:border-purple-300' : 'bg-white shadow-lg border-2 border-gray-100 group-hover:border-blue-300'}`}>
+                                <img 
+                                  src={tokenInfo.logoUrl} 
+                                  alt={tokenInfo.symbol}
+                                  className="w-10 h-10 rounded-full"
+                                />
+                                {token.isAave && (
+                                  <img
+                                    src="/aave-logo.png"
+                                    alt="Aave"
+                                    className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white"
+                                  />
                                 )}
                               </div>
-                              </div>
                             </div>
-                             <div className="mt-4 flex justify-end">
-                                <button
-                                  onClick={() => {
-                                    setSelectedToken(tokenAddress);
-                                    setShowSupplyModal(true);
-                                  }}
-                                  className="flex items-center gap-2 px-4 py-2 border-1 border-purple-500 text-purple-500 rounded-lg hover:opacity-90 transition-opacity font-medium"
-                                >
-                                  <img src="/aave-logo.png" alt="Aave" className="w-4 h-4" />
-                                  Earn
-                                </button>
+                            
+                            {/* Token Information */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-3">
+                                <div>
+                                  <h3 className="text-xl font-bold text-gray-900 mb-1">{token.isAave ? `a${tokenInfo.symbol}` : tokenInfo.symbol}</h3>
+                                  <p className="text-sm text-gray-500 font-mono truncate">{token.isAave ? token.aTokenAddress : tokenAddress}</p>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                                    {balancesLoading || aaveTokensLoading ? (
+                                      <div className="animate-pulse bg-gray-200 h-8 w-24 rounded"></div>
+                                    ) : (
+                                      tokenAmount < 0.0001 ? tokenAmount.toExponential(3) : tokenAmount.toFixed(4)
+                                    )}
+                                  </div>
+                                  <div className="text-lg font-semibold text-green-600">
+                                  {usdValuesLoading || balancesLoading || aaveTokensLoading ? (
+                                    <div className="animate-pulse bg-gray-200 h-6 w-20 rounded"></div>
+                                  ) : (
+                                    `$${(realUsdValue / (Number(currentTokenBalances[tokenAddress] || BigInt(1))) * Number(token.balance)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  )}
+                                </div>
+                                </div>
                               </div>
+                               <div className="mt-4 flex justify-end">
+                                  {token.isAave ? (
+                                    <button
+                                      // onClick={() => handleWithdraw(token)} // TODO: Implement withdraw
+                                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                                    >
+                                      Withdraw
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedToken(tokenAddress);
+                                        setShowSupplyModal(true);
+                                      }}
+                                      className="flex items-center gap-2 px-4 py-2 border-1 border-purple-500 text-purple-500 rounded-lg hover:opacity-90 transition-opacity font-medium"
+                                    >
+                                      <img src="/aave-logo.png" alt="Aave" className="w-4 h-4" />
+                                      Earn
+                                    </button>
+                                  )}
+                                </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
+                      );
                     })
                   )}
                 </div>

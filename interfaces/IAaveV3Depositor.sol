@@ -79,13 +79,14 @@ interface IAaveV3Depositor {
     /// @return valueUSD The value in USD (8 decimals)
     function getWalletAssetValueUSD(address wallet, address asset) external view returns (uint256 valueUSD);
 
-    /// @notice Get the hash of the withdrawal parameters
-    /// @param params The withdrawal parameters
-    /// @return hash The hash of the withdrawal parameters
     function getAaveWithdrawHash(AaveWithdrawParams calldata params) external view returns (bytes32);
 
-    /// @notice Get the hash of the supply parameters
-    /// @param params The supply parameters
-    /// @return hash The hash of the supply parameters
     function getAaveSupplyHash(AaveSupplyParams calldata params) external view returns (bytes32);
+
+    function networkConfigs(uint256 chainId) external view returns (address poolAddress, bool isActive);
+
+    function closeAaveV3Deposits(
+        address wallet,
+        address[] calldata assets
+    ) external;
 } 
