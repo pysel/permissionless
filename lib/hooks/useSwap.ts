@@ -5,6 +5,7 @@ import { useReadContract, useReadContracts, useSignTypedData } from "wagmi";
 import { useLoanManager } from "./useLoanManager";
 import LOAN_MANAGER_ABI from "../abis/loanManager";
 import WALLET_ABI from "../abis/wallet";
+import { DEV_LENDER_URL } from "../constants";
 
 interface SwapParams {
   tokenIn: `0x${string}`;
@@ -161,7 +162,7 @@ export function useSwap(walletAddress: string, tokens: string[]) {
     signature: `0x${string}`
   ) => {
     try {
-      const response = await fetch('DEV_LENDER_URL/swap', {
+      const response = await fetch(`${DEV_LENDER_URL}/swap`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

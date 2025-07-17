@@ -8,6 +8,7 @@ import WALLET_ABI from "@/lib/abis/wallet";
 import AAVE_V3_DEPOSITOR_ABI from "@/lib/abis/aave";
 import TransactionConfirmationModal, { TransactionConfirmationConfig } from "./TransactionConfirmationModal";
 import { useAave } from "@/lib/hooks/useAave";
+import { DEV_LENDER_URL } from "@/lib/constants";
 
 interface SupplyModalProps {
   isOpen: boolean;
@@ -192,7 +193,7 @@ export default function SupplyModal({
         },
       };
 
-      const response = await fetch('DEV_LENDER_URL/aave/supply', {
+      const response = await fetch(`${DEV_LENDER_URL}/aave/supply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

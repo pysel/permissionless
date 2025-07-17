@@ -8,6 +8,7 @@ import { useLoanManager } from "@/lib/hooks/useLoanManager";
 import LOAN_MANAGER_ABI from "@/lib/abis/loanManager";
 import WALLET_ABI from "@/lib/abis/wallet";
 import TransactionConfirmationModal, { TransactionConfirmationConfig } from "./TransactionConfirmationModal";
+import { DEV_LENDER_URL } from "@/lib/constants";
 
 // Extend Window interface to include ethereum
 declare global {
@@ -396,7 +397,7 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
 
       console.log("Sending wagmi personal_sign swap request payload:", payload);
 
-      const response = await fetch('DEV_LENDER_URL/swap', {
+      const response = await fetch(`${DEV_LENDER_URL}/swap`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
