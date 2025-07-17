@@ -10,12 +10,12 @@ export interface TokenInfo {
 // Common token addresses (you'll need to update these with actual addresses for your network)
 export const TOKEN_ADDRESSES = {
   ETH: '0x0000000000000000000000000000000000000000'.toLowerCase(),
-  WETH: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14'.toLowerCase(),
+  WETH: '0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c'.toLowerCase(),
   USDC: '0xA0b86a33E6441b8DBC06e6F6BBEe6DBb6Ee4F5D5'.toLowerCase(),
   USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7'.toLowerCase(),
   DAI: '0x6B175474E89094C44Da98b954EedeAC495271d0F'.toLowerCase(),
   WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599'.toLowerCase(),
-  LINK: '0x779877A7B0D9E8603169DdbD7836e478b4624789'.toLowerCase(),
+  LINK: '0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5'.toLowerCase(),
 } as const;
 
 export const TOKEN_INFO: Record<string, TokenInfo> = {

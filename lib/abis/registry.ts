@@ -28,4 +28,30 @@ export default [
       stateMutability: "view",
       type: "function",
     },
+    {
+        "inputs": [],
+        "name": "weth",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "aaveV3Depositor",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    }
 ] as const;

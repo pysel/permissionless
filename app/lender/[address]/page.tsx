@@ -15,8 +15,8 @@ import { formatUsdAmount } from "@/lib/utils/format";
 
 export default function LenderDetailsPage() {
   const params = useParams();
-  const router = useRouter();
   const { isConnected } = useAccount();
+  console.log("isConnected", isConnected);
   const { lenders, isLoading } = useLenders(CONTRACT_ADDRESSES.PERMISSIONLESS_REGISTRY);
   
   // Loan request form state - modified for multiple tokens

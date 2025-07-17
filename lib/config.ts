@@ -13,9 +13,9 @@ const metadata = {
   icons: ["https://avatars.githubusercontent.com/u/37784886"],
 };
 
-// Create storage that properly handles SSR
+// Create storage that properly handles SSR by using cookies
 const storage = createStorage({ 
-  storage: typeof window !== 'undefined' ? window.localStorage : cookieStorage 
+  storage: cookieStorage 
 });
  
 export const config = defaultWagmiConfig({

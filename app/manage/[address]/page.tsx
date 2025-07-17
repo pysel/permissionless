@@ -13,6 +13,7 @@ import { getTokenInfo } from "@/lib/tokenLogos";
 import { formatUsdAmount } from "@/lib/utils/format";
 import LOAN_MANAGER_ABI from "@/lib/abis/loanManager";
 import SwapModal from "../../components/SwapModal";
+import SupplyModal from "../../components/SupplyModal";
 
 export const calculateLoanStatus = (loan: any) => {
     if (!loan) return { status: 'unknown', color: 'bg-gray-100 text-gray-800', percentage: 0 };
@@ -151,6 +152,8 @@ export default function LoanDetailsPage() {
   
   // State for swap modal
   const [showSwapModal, setShowSwapModal] = useState(false);
+  const [showSupplyModal, setShowSupplyModal] = useState(false);
+  const [selectedToken, setSelectedToken] = useState<string | null>(null);
 
   // Get allowed tokens for the loaner
   const { allowedTokens, isLoading: allowedTokensLoading } = useLoanerAllowedTokens(loan?.loaner || "");
@@ -201,7 +204,7 @@ export default function LoanDetailsPage() {
   };
 
   // Function to refresh loan data after swap
-  const handleSwapSuccess = async () => {
+  const handleActionSuccess = async () => {
     try {
       // Invalidate all relevant queries to refresh the data
       await Promise.all([
@@ -236,7 +239,7 @@ export default function LoanDetailsPage() {
         })
       ]);
     } catch (error) {
-      console.error('Error refreshing loan data after swap:', error);
+      console.error('Error refreshing loan data after action:', error);
     }
   };
 
@@ -440,6 +443,18 @@ export default function LoanDetailsPage() {
                               </div>
                               </div>
                             </div>
+                             <div className="mt-4 flex justify-end">
+                                <button
+                                  onClick={() => {
+                                    setSelectedToken(tokenAddress);
+                                    setShowSupplyModal(true);
+                                  }}
+                                  className="flex items-center gap-2 px-4 py-2 border-1 border-purple-500 text-purple-500 rounded-lg hover:opacity-90 transition-opacity font-medium"
+                                >
+                                  <img src="/aave-logo.png" alt="Aave" className="w-4 h-4" />
+                                  Earn
+                                </button>
+                              </div>
                           </div>
                         </div>
                       </div>
@@ -489,13 +504,13 @@ export default function LoanDetailsPage() {
 
                   {/* Action Buttons */}
                   <div className="space-y-3 pt-2">
-                    <button className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                    <button className="w-full border-green-600 bg-green-50 border-1 text-green-600 px-4 py-3 rounded-lg hover:bg-green-100 transition-colors font-medium">
                       Add Collateral
                     </button>
                     <button 
                       onClick={() => setShowCloseConfirmation(true)}
                       disabled={isClosingLoan || isCloseLoanPending || isCloseLoanConfirming}
-                      className="w-full bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      className="w-full border-red-600 bg-red-50 border-1 text-red-600 px-4 py-3 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                     >
                       {isClosingLoan || isCloseLoanPending || isCloseLoanConfirming ? "Closing..." : "Close Loan"}
                     </button>
@@ -518,8 +533,20 @@ export default function LoanDetailsPage() {
         amounts={currentAmounts}
         walletAddress={loan.wallet}
         borrowerAddress={loan.borrower}
-        onSwapSuccess={handleSwapSuccess}
+        onSwapSuccess={handleActionSuccess}
       />
+
+      {showSupplyModal && selectedToken && (
+        <SupplyModal
+            isOpen={showSupplyModal}
+            onClose={() => setShowSupplyModal(false)}
+            tokenAddress={selectedToken}
+            tokenBalance={currentTokenBalances[selectedToken] || BigInt(0)}
+            walletAddress={loan.wallet}
+            borrowerAddress={loan.borrower}
+            onSupplySuccess={handleActionSuccess}
+        />
+      )}
 
       {/* Close Loan Confirmation Modal */}
       {showCloseConfirmation && (
