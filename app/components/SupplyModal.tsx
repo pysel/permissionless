@@ -192,7 +192,7 @@ export default function SupplyModal({
         },
       };
 
-      const response = await fetch('http://localhost:3002/aave/supply', {
+      const response = await fetch('DEV_LENDER_URL/aave/supply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

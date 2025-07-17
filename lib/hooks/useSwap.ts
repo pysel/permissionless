@@ -161,7 +161,7 @@ export function useSwap(walletAddress: string, tokens: string[]) {
     signature: `0x${string}`
   ) => {
     try {
-      const response = await fetch('http://localhost:3002/swap', {
+      const response = await fetch('DEV_LENDER_URL/swap', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

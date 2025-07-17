@@ -8,3 +8,5 @@ export const SUPPORTED_NETWORKS = {
   ETHEREUM: 1,
   SEPOLIA: 11155111,
 } as const; 
+
+export const DEV_LENDER_URL = process.env.NEXT_PUBLIC_DEV_LENDER_URL || "http://localhost:3002";

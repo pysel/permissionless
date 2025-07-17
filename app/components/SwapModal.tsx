@@ -396,7 +396,7 @@ export default function SwapModal({ isOpen, onClose, tokens, amounts, walletAddr
 
       console.log("Sending wagmi personal_sign swap request payload:", payload);
 
-      const response = await fetch('http://localhost:3002/swap', {
+      const response = await fetch('DEV_LENDER_URL/swap', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
